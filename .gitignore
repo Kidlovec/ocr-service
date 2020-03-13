@@ -31,6 +31,6 @@ build/
 .vscode/
 *.jpg
 *.png
-
+!img/*.png
 .DS_Store
 

@@ -15,7 +15,7 @@ Excel 格式如下 (格式参考 sample.xlsx)
 |---| -- | -- 
 |1 | hello|こんにちは|
 
-具体接口参考 [swagger](http://localhost:8080/swagger-ui.html)
+具体接口 启动后参考 [swagger](http://localhost:8080/swagger-ui.html)
 
 ![](img/img-swagger.png)
 
