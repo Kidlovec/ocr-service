@@ -4,6 +4,9 @@ import com.alibaba.excel.EasyExcel;
 import io.kidlovec.ocrservice.excel.ExcelListener;
 import io.kidlovec.ocrservice.model.TranslateInfo;
 import io.kidlovec.ocrservice.translate.GoogleApi;
+import io.swagger.annotations.ApiImplicitParam;
+import io.swagger.annotations.ApiImplicitParams;
+import io.swagger.annotations.ApiOperation;
 import lombok.extern.slf4j.Slf4j;
 import net.sourceforge.tess4j.Tesseract;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,7 +36,7 @@ import static io.kidlovec.ocrservice.constants.Constants.*;
 @CrossOrigin
 @Slf4j
 @RestController
-public class FileUploadController {
+public class OcrController {
 
 
     @Autowired
@@ -41,12 +44,17 @@ public class FileUploadController {
     @Autowired
     private ExcelListener excelListener;
 
-    @RequestMapping("/")
+    @GetMapping("/")
     public String index() {
         return "index";
     }
 
+
     @PostMapping("/uploads")
+    @ApiOperation(value = "上传图片文件-识别文字")
+    @ApiImplicitParams({
+            @ApiImplicitParam(name = "files", value = "文件-可以上传多个，只支持png/jpg", required = true, paramType = "file"),
+    })
     public String multiFileUpload(@RequestParam("files") List<MultipartFile> files) throws Exception {
         Tesseract tesseract = getTesseract();
 
@@ -68,12 +76,22 @@ public class FileUploadController {
     }
 
     @PostMapping(value = "/upload")
-    public String singleFileUpload(@RequestParam("file") MultipartFile file) throws Exception{
-        return getText(file,  getTesseract());
+    @ApiOperation(value = "上传图片文件-识别文字")
+    @ApiImplicitParams({
+            @ApiImplicitParam(name = "file", value = "文件-单个文件，只支持png/jpg", required = true, paramType = "file"),
+    })
+    public String singleFileUpload(@RequestParam("file") MultipartFile file) throws Exception {
+        return getText(file, getTesseract());
     }
 
 
     @GetMapping("/translate")
+    @ApiOperation(value = "翻译")
+    @ApiImplicitParams({
+            @ApiImplicitParam(name = "msg", value = "要翻译的文字", required = true, paramType = "String"),
+            @ApiImplicitParam(name = "langFrom", value = "源语言", paramType = "String"),
+            @ApiImplicitParam(name = "langTo", value = "目标语言", paramType = "String"),
+    })
     public String getTranslate(@RequestParam("msg") String msg,
                                @RequestParam(value = "langFrom", required = false, defaultValue = LANG_ZH) String langFrom,
                                @RequestParam(value = "langTo", required = false, defaultValue = LANG_EN) String langTo
@@ -83,7 +101,11 @@ public class FileUploadController {
     }
 
 
-    @GetMapping("/read")
+    @GetMapping("/translate-local/")
+    @ApiOperation(value = "翻译-excel 读取 Excel 的 内容 并翻译到 格式参考 sample.xlsx ")
+    @ApiImplicitParams({
+            @ApiImplicitParam(name = "path", value = "文件所在位置-全路径", required = true, paramType = "String"),
+    })
     public String readExcel(@RequestParam("path") String path) {
 
         final List<TranslateInfo> objects =
@@ -93,7 +115,7 @@ public class FileUploadController {
         return "success";
     }
 
-    private String getText(MultipartFile file, Tesseract tesseract) throws Exception{
+    private String getText(MultipartFile file, Tesseract tesseract) throws Exception {
         byte[] bytes = file.getBytes();
         final String uploadPathName = UPLOAD_PATH + file.getOriginalFilename();
         Path path = Paths.get(uploadPathName);
@@ -204,6 +226,7 @@ public class FileUploadController {
 
     /**
      * 过滤特殊字符
+     *
      * @param str
      * @return
      * @throws PatternSyntaxException
