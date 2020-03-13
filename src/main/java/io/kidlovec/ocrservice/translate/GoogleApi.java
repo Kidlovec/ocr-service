@@ -2,6 +2,7 @@ package io.kidlovec.ocrservice.translate;
 
 
 import com.alibaba.fastjson.JSONArray;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import javax.script.Invocable;
@@ -18,6 +19,7 @@ import java.net.URLEncoder;
  * @date 2020-03-13
  * @since 1.0.0
  */
+@Slf4j
 @Component
 public class GoogleApi {
     private static final String PATH = "/gettk.js";
@@ -68,6 +70,7 @@ public class GoogleApi {
         browser.setUrl("https://translate.google.cn/");
 
         try {
+            log.debug(" path : {}", browser.getUrl());
             String result = browser.executeGet();
             if (StringUtils.isNotBlank(result)) {
                 if (result.indexOf("tkk") > -1) {
@@ -131,6 +134,7 @@ public class GoogleApi {
         browser.setUrl(buffer.toString());
 
         try {
+            log.debug(" path : {}", browser.getUrl());
             String result = browser.executeGet();
             JSONArray array = (JSONArray) JSONArray.parse(result);
             JSONArray rArray = array.getJSONArray(0);

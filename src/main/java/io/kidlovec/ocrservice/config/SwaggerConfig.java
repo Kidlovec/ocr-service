@@ -28,10 +28,13 @@ public class SwaggerConfig {
 
     @Bean
     public Docket createRestApi() {
-        List<Parameter> parameters = new ArrayList<>();
 
-        return new Docket(DocumentationType.SWAGGER_2).apiInfo(apiInfo()).select()
-                .apis(RequestHandlerSelectors.any()).paths(PathSelectors.any()).build().globalOperationParameters(parameters);
+        return new Docket(DocumentationType.SWAGGER_2)
+                .apiInfo(apiInfo())
+                .select()
+                .apis(RequestHandlerSelectors.basePackage("io.kidlovec"))
+                .paths(PathSelectors.any())
+                .build();
 
     }
 

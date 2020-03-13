@@ -7,6 +7,7 @@ import io.kidlovec.ocrservice.translate.GoogleApi;
 import io.swagger.annotations.ApiImplicitParam;
 import io.swagger.annotations.ApiImplicitParams;
 import io.swagger.annotations.ApiOperation;
+import io.swagger.annotations.ApiParam;
 import lombok.extern.slf4j.Slf4j;
 import net.sourceforge.tess4j.Tesseract;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -50,12 +51,9 @@ public class OcrController {
     }
 
 
-    @PostMapping("/uploads")
+    @PostMapping(value = "/uploads", consumes = "multipart/*", headers = "content-type=multipart/form-data")
     @ApiOperation(value = "上传图片文件-识别文字")
-    @ApiImplicitParams({
-            @ApiImplicitParam(name = "files", value = "文件-可以上传多个，只支持png/jpg", required = true, paramType = "file"),
-    })
-    public String multiFileUpload(@RequestParam("files") List<MultipartFile> files) throws Exception {
+    public String multiFileUpload(@RequestParam("files") @ApiParam(value = "文件-可以上传多个，只支持png/jpg",name = "files", required = true) List<MultipartFile> files) throws Exception {
         Tesseract tesseract = getTesseract();
 
         StringBuilder sb = new StringBuilder();
@@ -77,10 +75,7 @@ public class OcrController {
 
     @PostMapping(value = "/upload")
     @ApiOperation(value = "上传图片文件-识别文字")
-    @ApiImplicitParams({
-            @ApiImplicitParam(name = "file", value = "文件-单个文件，只支持png/jpg", required = true, paramType = "file"),
-    })
-    public String singleFileUpload(@RequestParam("file") MultipartFile file) throws Exception {
+    public String singleFileUpload(@RequestParam("file") @ApiParam(value = "文件，只支持png/jpg",name = "file", required = true) MultipartFile file) throws Exception {
         return getText(file, getTesseract());
     }
 
@@ -88,14 +83,19 @@ public class OcrController {
     @GetMapping("/translate")
     @ApiOperation(value = "翻译")
     @ApiImplicitParams({
-            @ApiImplicitParam(name = "msg", value = "要翻译的文字", required = true, paramType = "String"),
-            @ApiImplicitParam(name = "langFrom", value = "源语言", paramType = "String"),
-            @ApiImplicitParam(name = "langTo", value = "目标语言", paramType = "String"),
+            @ApiImplicitParam(name = "msg", value = "要翻译的文字", required = true, paramType = "query"),
+            @ApiImplicitParam(name = "langFrom", value = "源语言", example = "ja/zh-CN/en", required = true,
+                    defaultValue = "zh-CN", paramType
+                    = "query"),
+            @ApiImplicitParam(name = "langTo", value = "目标语言", example = "ja/zh-CN/en", required = true,
+                    defaultValue = "en", paramType =
+                    "query"),
     })
     public String getTranslate(@RequestParam("msg") String msg,
                                @RequestParam(value = "langFrom", required = false, defaultValue = LANG_ZH) String langFrom,
                                @RequestParam(value = "langTo", required = false, defaultValue = LANG_EN) String langTo
     ) throws Exception {
+        log.debug("translate param :{}, {} -> {}", msg, langFrom, langTo);
         String translate = translator.translate(stringFilterBeforeTranslate(msg), langFrom, langTo);
         return translate;
     }
@@ -104,7 +104,8 @@ public class OcrController {
     @GetMapping("/translate-local/")
     @ApiOperation(value = "翻译-excel 读取 Excel 的 内容 并翻译到 格式参考 sample.xlsx ")
     @ApiImplicitParams({
-            @ApiImplicitParam(name = "path", value = "文件所在位置-全路径", required = true, paramType = "String"),
+            @ApiImplicitParam(name = "path", value = "文件所在位置-全路径", dataType = "File", required = true, paramType =
+                    "query"),
     })
     public String readExcel(@RequestParam("path") String path) {
 
