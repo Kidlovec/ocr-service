@@ -1,6 +1,7 @@
 package io.kidlovec.ocrservice.controller;
 
 import com.alibaba.excel.EasyExcel;
+import io.kidlovec.ocrservice.constants.OcrLang;
 import io.kidlovec.ocrservice.excel.ExcelListener;
 import io.kidlovec.ocrservice.model.TranslateInfo;
 import io.kidlovec.ocrservice.translate.GoogleApi;
@@ -53,8 +54,20 @@ public class OcrController {
 
     @PostMapping(value = "/uploads", consumes = "multipart/*", headers = "content-type=multipart/form-data")
     @ApiOperation(value = "上传图片文件-识别文字")
-    public String multiFileUpload(@RequestParam("files") @ApiParam(value = "文件-可以上传多个，只支持png/jpg",name = "files", required = true) List<MultipartFile> files) throws Exception {
-        Tesseract tesseract = getTesseract();
+    public String multiFileUpload(
+            @RequestParam("files") @ApiParam(value = "文件-可以上传多个，只支持png/jpg", name = "files", required = true) List<MultipartFile> files
+            , @RequestParam(value = "lang", required = false, defaultValue = "") @ApiParam(value = "eng", name =
+            "lang") String lang
+    ) throws Exception {
+
+
+        if (!OcrLang.getLangType(lang)) {
+
+            throw new IllegalArgumentException("The " + lang + " data is not existed!");
+
+        }
+
+        Tesseract tesseract = getTesseract(lang);
 
         StringBuilder sb = new StringBuilder();
 
@@ -75,8 +88,16 @@ public class OcrController {
 
     @PostMapping(value = "/upload")
     @ApiOperation(value = "上传图片文件-识别文字")
-    public String singleFileUpload(@RequestParam("file") @ApiParam(value = "文件，只支持png/jpg",name = "file", required = true) MultipartFile file) throws Exception {
-        return getText(file, getTesseract());
+    public String singleFileUpload(
+            @RequestParam("file") @ApiParam(value = "文件，只支持png/jpg", name = "file", required = true) MultipartFile file
+            , @RequestParam(value = "lang", required = false, defaultValue = "") @ApiParam(value = "eng", name = "lang") String lang
+    ) throws Exception {
+        if (!OcrLang.getLangType(lang)) {
+
+            throw new IllegalArgumentException("The " + lang + " data is not existed!");
+
+        }
+        return getText(file, getTesseract(lang));
     }
 
 
@@ -162,15 +183,26 @@ public class OcrController {
      *
      * @return
      */
-    private Tesseract getTesseract() {
+    private Tesseract getTesseract(String lang) {
         Tesseract tesseract = new Tesseract();
         tesseract.setTessVariable("user_defined_dpi", "300");
         tesseract.setDatapath(TESS_DATA);
 
 //        tesseract.setLanguage("chi_simmm");//中文识别
 //        tesseract.setLanguage("chi_simm");//中文识别
-        tesseract.setLanguage("chi_sim");//中文识别
 //        tesseract.setLanguage("chi_tra");//繁体中文识别
+
+        // 中文识别
+        tesseract.setLanguage("chi_sim");
+        // 日文识别
+        tesseract.setLanguage("jpn");
+        tesseract.setLanguage("eng");
+        tesseract.setLanguage("enm");
+
+        if (lang != null && !"".equals(lang.trim())) {
+
+            tesseract.setLanguage(lang);
+        }
         return tesseract;
     }
 

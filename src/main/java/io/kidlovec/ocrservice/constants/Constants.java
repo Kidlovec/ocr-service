@@ -11,7 +11,7 @@ public interface Constants {
 
     String SUFFIX_PNG = "png";
     String SUFFIX_JPG = "jpg";
-    String UPLOAD_PATH = "dst/";
+    String UPLOAD_PATH = "src/main/resources/dst/";
     String TESS_DATA = "//usr/local//share//tessdata///";
 
     String FILTER_PATTERN = "[^0-9a-zA-Z\u4e00-\u9fa5\\n\\s+“”]+";

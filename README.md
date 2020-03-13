@@ -30,6 +30,10 @@ you need to install your tesseract-ocr first
 
 install [tutorial](https://tesseract-ocr.github.io/tessdoc/Home.html)
 
+notice that the [tess-language-data](https://tesseract-ocr.github.io/tessdoc/Data-Files) is supported is install in 
+your environment 
+
+
 the set the local path of `TESS_DATA` in the Constant.java
 
 - [easyexcel](https://alibaba-easyexcel.github.io/)

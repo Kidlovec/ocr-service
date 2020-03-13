@@ -34,3 +34,4 @@ build/
 !img/*.png
 .DS_Store
 
+*.log
