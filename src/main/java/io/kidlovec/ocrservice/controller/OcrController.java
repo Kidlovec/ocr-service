@@ -90,11 +90,11 @@ public class OcrController {
     @ApiOperation(value = "上传图片文件-识别文字")
     public String singleFileUpload(
             @RequestParam("file") @ApiParam(value = "文件，只支持png/jpg", name = "file", required = true) MultipartFile file
-            , @RequestParam(value = "lang", required = false, defaultValue = "") @ApiParam(value = "eng", name = "lang") String lang
+            , @RequestParam(value = "lang", required = false, defaultValue = "eng") @ApiParam(value = "eng", name = "lang") String lang
     ) throws Exception {
         if (!OcrLang.getLangType(lang)) {
 
-            throw new IllegalArgumentException("The " + lang + " data is not existed!");
+            throw new IllegalArgumentException("The " + lang + " lang is not existed!");
 
         }
         return getText(file, getTesseract(lang));
@@ -266,7 +266,9 @@ public class OcrController {
      */
     private String stringFilterBeforeTranslate(String str) throws PatternSyntaxException {
 
-        return str.replaceAll(FILTER_PATTERN, " ").trim();
+//        str.replaceAll(FILTER_PATTERN, " ").trim();
+
+        return str;
     }
 
 }
