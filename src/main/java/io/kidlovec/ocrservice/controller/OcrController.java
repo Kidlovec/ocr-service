@@ -90,14 +90,19 @@ public class OcrController {
     @ApiOperation(value = "上传图片文件-识别文字")
     public String singleFileUpload(
             @RequestParam("file") @ApiParam(value = "文件，只支持png/jpg", name = "file", required = true) MultipartFile file
-            , @RequestParam(value = "lang", required = false, defaultValue = "eng") @ApiParam(value = "eng", name = "lang") String lang
+            , @RequestParam(value = "lang", required = false, defaultValue = "chi_sim") @ApiParam(value = "chi_sim", name = "lang") String lang
     ) throws Exception {
         if (!OcrLang.getLangType(lang)) {
-
             throw new IllegalArgumentException("The " + lang + " lang is not existed!");
-
         }
-        return getText(file, getTesseract(lang));
+
+        log.info(" uploading file: {}", file.getOriginalFilename());
+
+        long st = System.currentTimeMillis();
+        final String text = getText(file, getTesseract(lang));
+
+        log.warn(" ocr completed in ({} ms)", System.currentTimeMillis() - st);
+        return text;
     }
 
 
@@ -116,7 +121,7 @@ public class OcrController {
                                @RequestParam(value = "langFrom", required = false, defaultValue = LANG_ZH) String langFrom,
                                @RequestParam(value = "langTo", required = false, defaultValue = LANG_EN) String langTo
     ) throws Exception {
-        log.debug("translate param :{}, {} -> {}", msg, langFrom, langTo);
+        log.debug("translate param : {}, {} -> {}", msg, langFrom, langTo);
         String translate = translator.translate(stringFilterBeforeTranslate(msg), langFrom, langTo);
         return translate;
     }
@@ -149,12 +154,16 @@ public class OcrController {
             String newFilePath = UPLOAD_PATH + jpgName;
 
             final File file1 = png2Jpg(uploadPathName, newFilePath);
+            long st = System.currentTimeMillis();
             text = tesseract.doOCR(file1);
+            log.warn(" tesseract.doOCR completed in ({} ms)", System.currentTimeMillis() - st);
 
         } else {
 
             File convFile = convert(file);
+            long st = System.currentTimeMillis();
             text = tesseract.doOCR(convFile);
+            log.warn(" tesseract.doOCR completed in ({} ms)", System.currentTimeMillis() - st);
         }
 
         text = filterForUnrelatedContents(text);
@@ -192,12 +201,12 @@ public class OcrController {
 //        tesseract.setLanguage("chi_simm");//中文识别
 //        tesseract.setLanguage("chi_tra");//繁体中文识别
 
-        // 中文识别
-        tesseract.setLanguage("chi_sim");
-        // 日文识别
-        tesseract.setLanguage("jpn");
         tesseract.setLanguage("eng");
         tesseract.setLanguage("enm");
+        // 日文识别
+        tesseract.setLanguage("jpn");
+        // 中文识别
+        tesseract.setLanguage("chi_sim");
 
         if (lang != null && !"".equals(lang.trim())) {
 
