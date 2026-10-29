@@ -1,7 +1,8 @@
 package io.kidlovec.ocrservice.translate;
 
 
-import com.alibaba.fastjson.JSONArray;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
@@ -136,20 +137,26 @@ public class GoogleApi {
         try {
             log.debug(" path : {}", browser.getUrl());
             String result = browser.executeGet();
-            JSONArray array = (JSONArray) JSONArray.parse(result);
-            JSONArray rArray = array.getJSONArray(0);
-            StringBuffer rBuffer = new StringBuffer();
-            for (int i = 0; i < rArray.size(); i++) {
-                String r = rArray.getJSONArray(i).getString(0);
-                if (StringUtils.isNotBlank(r)) {
-                    rBuffer.append(r);
-                }
-            }
-
-            return rBuffer.toString();
+            return parseTranslation(result);
         } catch (Exception e) {
             throw new RuntimeException("结果集解析出错");
         }
+    }
+
+    // Tree parsing does not enable polymorphic type resolution.
+    static String parseTranslation(String result) throws IOException {
+        JsonNode root = new ObjectMapper().readTree(result);
+        if (root == null || !root.isArray() || !root.path(0).isArray()) {
+            throw new IOException("Invalid translation response");
+        }
+        StringBuilder translated = new StringBuilder();
+        for (JsonNode segment : root.get(0)) {
+            if (!segment.isArray() || !segment.path(0).isTextual()) {
+                throw new IOException("Invalid translation segment");
+            }
+            translated.append(segment.get(0).textValue());
+        }
+        return translated.toString();
     }
 
     /**
