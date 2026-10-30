@@ -142,6 +142,11 @@ public class CommonExceptionAdvice {
         return ResponseEntity.status(HttpStatus.UNSUPPORTED_MEDIA_TYPE).build();
     }
 
+    @ExceptionHandler(SecurityException.class)
+    public ResponseEntity<String> handleSecurityException(SecurityException e) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Access denied");
+    }
+
     /**
      * 500 - Internal Server Error
      */

@@ -1,0 +1,67 @@
+name: Java 8 verification
+
+on:
+  pull_request:
+  push:
+    branches: [master, 'security/**']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: java8-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
+        with:
+          distribution: temurin
+          java-version: '8'
+          cache: maven
+      - name: Verify Java and wrapper versions
+        run: |
+          mkdir -p ci-reports
+          java -version
+          sh ./mvnw -B -V --version | tee ci-reports/toolchain.txt
+          grep -q 'Apache Maven 3.6.3' ci-reports/toolchain.txt
+          grep -q 'Java version: 1.8' ci-reports/toolchain.txt
+      - name: Clean verify (including all JUnit tests)
+        run: |
+          set -o pipefail
+          sh ./mvnw -B -V -Djava.awt.headless=true -DskipTests=false -Dmaven.test.skip=false -DfailIfNoTests=true clean verify 2>&1 | tee ci-reports/verify.log
+      - name: Verify expected test suites executed
+        if: ${{ !cancelled() }}
+        run: python3 .github/scripts/ci-evidence.py tests
+      - name: Resolved dependency tree and conflict evidence
+        if: ${{ !cancelled() }}
+        run: |
+          set -o pipefail
+          mkdir -p ci-reports
+          sh ./mvnw -B org.apache.maven.plugins:maven-dependency-plugin:3.6.1:tree -Dverbose -DoutputFile=ci-reports/dependency-tree.txt 2>&1 | tee ci-reports/dependency-tree.log
+          sh ./mvnw -B org.apache.maven.plugins:maven-dependency-plugin:3.6.1:list -DoutputFile=ci-reports/dependency-list.txt
+          grep 'omitted for conflict' ci-reports/dependency-tree.txt > ci-reports/version-conflicts.txt || test "$?" -eq 1
+      - name: Check removed dependencies and packaged jar
+        if: ${{ !cancelled() }}
+        run: python3 .github/scripts/ci-evidence.py dependencies
+      - name: Query OSV for remaining Maven advisories
+        if: ${{ !cancelled() }}
+        run: python3 .github/scripts/ci-evidence.py osv
+      - name: Upload evidence even on failure
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: java8-ci-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+          retention-days: 14
+          if-no-files-found: error
+          path: |
+            ci-reports/
+            target/surefire-reports/
+            target/failsafe-reports/

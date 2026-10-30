@@ -18,6 +18,7 @@ import springfox.documentation.swagger2.annotations.EnableSwagger2;
  * @author kidlovec
  * @date 2020-03-12
  */
+@org.springframework.boot.autoconfigure.condition.ConditionalOnProperty(name = "ocr.swagger.enabled", havingValue = "true")
 @Configuration
 @EnableSwagger2
 public class SwaggerConfig {

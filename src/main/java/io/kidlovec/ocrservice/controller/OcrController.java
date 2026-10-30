@@ -16,17 +16,15 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.imageio.ImageIO;
-import javax.validation.constraints.NotNull;
 import java.awt.*;
 import java.awt.image.BufferedImage;
-import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.List;
 import java.util.regex.PatternSyntaxException;
+
+import io.kidlovec.ocrservice.upload.UploadImage;
 
 import static io.kidlovec.ocrservice.constants.Constants.*;
 
@@ -40,6 +38,9 @@ import static io.kidlovec.ocrservice.constants.Constants.*;
 @RestController
 public class OcrController {
 
+
+    @org.springframework.beans.factory.annotation.Value("${ocr.local-excel.enabled:false}")
+    private boolean localExcelEnabled;
 
     @Autowired
     private GoogleApi translator;
@@ -67,6 +68,9 @@ public class OcrController {
 
         }
 
+        if (files == null || files.isEmpty() || files.size() > 10) {
+            throw new IllegalArgumentException("Upload between 1 and 10 images");
+        }
         Tesseract tesseract = getTesseract(lang);
 
         StringBuilder sb = new StringBuilder();
@@ -134,6 +138,9 @@ public class OcrController {
                     "query"),
     })
     public String readExcel(@RequestParam("path") String path) {
+        if (!localExcelEnabled) {
+            throw new SecurityException("Local Excel access is disabled");
+        }
 
         final List<TranslateInfo> objects =
                 EasyExcel.read(path, TranslateInfo.class, excelListener).sheet("Sheet1").doReadSync();
@@ -143,32 +150,25 @@ public class OcrController {
     }
 
     private String getText(MultipartFile file, Tesseract tesseract) throws Exception {
-        byte[] bytes = file.getBytes();
-        final String uploadPathName = UPLOAD_PATH + file.getOriginalFilename();
-        Path path = Paths.get(uploadPathName);
-        Files.write(path, bytes);
-        String text;
-        if (file != null && checkPng(file.getOriginalFilename())) {
-
-            final String jpgName = generateJpgName(file.getOriginalFilename());
-            String newFilePath = UPLOAD_PATH + jpgName;
-
-            final File file1 = png2Jpg(uploadPathName, newFilePath);
-            long st = System.currentTimeMillis();
-            text = tesseract.doOCR(file1);
-            log.warn(" tesseract.doOCR completed in ({} ms)", System.currentTimeMillis() - st);
-
-        } else {
-
-            File convFile = convert(file);
-            long st = System.currentTimeMillis();
-            text = tesseract.doOCR(convFile);
-            log.warn(" tesseract.doOCR completed in ({} ms)", System.currentTimeMillis() - st);
+        // Never use the client-supplied filename as a filesystem path.
+        BufferedImage image = UploadImage.read(file);
+        Path temporary = Files.createTempFile("ocr-", ".png");
+        try {
+            BufferedImage rgb = new BufferedImage(image.getWidth(), image.getHeight(), BufferedImage.TYPE_INT_RGB);
+            Graphics2D graphics = rgb.createGraphics();
+            try {
+                graphics.drawImage(image, 0, 0, Color.WHITE, null);
+            } finally {
+                graphics.dispose();
+            }
+            if (!ImageIO.write(rgb, "png", temporary.toFile())) {
+                throw new IOException("PNG encoder unavailable");
+            }
+            String text = tesseract.doOCR(temporary.toFile());
+            return stringFilterBeforeTranslate(filterForUnrelatedContents(text));
+        } finally {
+            Files.deleteIfExists(temporary);
         }
-
-        text = filterForUnrelatedContents(text);
-
-        return stringFilterBeforeTranslate(text);
     }
 
     /**
@@ -213,57 +213,6 @@ public class OcrController {
             tesseract.setLanguage(lang);
         }
         return tesseract;
-    }
-
-    private static boolean checkPng(String fileName) {
-        return SUFFIX_PNG.equals(fileName.substring(fileName.lastIndexOf(".") + 1));
-    }
-
-    public static File convert(@NotNull MultipartFile file) throws IOException {
-        File convFile = new File(file.getOriginalFilename());
-        convFile.createNewFile();
-        FileOutputStream fos = new FileOutputStream(convFile);
-        fos.write(file.getBytes());
-        fos.close();
-        return convFile;
-    }
-
-    public static File png2Jpg(String filePath, String dstPath) {
-
-        BufferedImage bufferedImage;
-
-        try {
-
-            //read image file
-            bufferedImage = ImageIO.read(new File(filePath));
-
-            // create a blank, RGB, same width and height, and a white background
-            BufferedImage newBufferedImage = new BufferedImage(bufferedImage.getWidth(),
-                    bufferedImage.getHeight(), BufferedImage.TYPE_INT_RGB);
-
-            //TYPE_INT_RGB:创建一个RBG图像，24位深度，成功将32位图转化成24位
-
-            newBufferedImage.createGraphics().drawImage(bufferedImage, 0, 0, Color.WHITE, null);
-            final File file = new File(dstPath);
-            // write to jpeg file
-            ImageIO.write(newBufferedImage, SUFFIX_JPG, file);
-
-            return file;
-        } catch (IOException e) {
-
-            e.printStackTrace();
-
-        }
-
-        return null;
-
-    }
-
-    public static String generateJpgName(String fileName) {
-        final int i = fileName.lastIndexOf(".");
-        final String substring = fileName.substring(0, i) + "." + SUFFIX_JPG;
-        System.out.println(substring);
-        return substring;
     }
 
     /**
